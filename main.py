@@ -4,8 +4,21 @@ from sqlalchemy import create_engine, Column, String
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session
 from fastapi.middleware.cors import CORSMiddleware
-
+from dotenv import load_dotenv
+from mistralai import Mistral
+import os
 import uuid
+
+
+load_dotenv()  # Charge les variables depuis .env
+
+# Initialisation du client Mistral avec la clé API
+api_key = os.getenv("MISTRAL_API_KEY")
+if not api_key:
+    raise ValueError("MISTRAL_API_KEY n'est pas défini dans les variables d'environnement.")
+
+client = Mistral(api_key=api_key)
+model = "mistral-large-latest"
 
 
 # Configuration de la base de données
@@ -52,12 +65,24 @@ app.add_middleware(
     allow_headers=["*"],  # Permet tous les en-têtes
 )
 
+class ChatRequest(BaseModel):
+    message: str
+
+@app.post("/journey/chat")
+async def chat_with_mistral(request: ChatRequest):
+    try:
+        chat_response = client.chat.complete(
+            model=model,
+            messages=[{"role": "user", "content": request.message}]
+        )
+        return {"response": chat_response.choices[0].message.content}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.get("/bonjour/{name}")
 async def root(name: str):
     return {"greeting": f"Hello, {name}"}
     
-    
-
 # Routes CRUD
 @app.post("/journeys/", response_model=JourneyResponse)
 def create_journey(journey: JourneyCreate, db: Session = Depends(get_db)):
