@@ -1,6 +1,6 @@
 from fastapi import FastAPI, HTTPException, Depends
 from pydantic import BaseModel
-from sqlalchemy import create_engine, Column, String
+from sqlalchemy import create_engine, Column, String, Text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session
 from fastapi.middleware.cors import CORSMiddleware
@@ -32,7 +32,8 @@ class Journey(Base):
     __tablename__ = "journey"
     id = Column(String, primary_key=True, index=True, default=lambda: str(uuid.uuid4()))
     name = Column(String, index=True)
-    description = Column(String)
+    description = Column(Text)
+    ai_response = Column(Text)  # Nouveau champ pour stocker la réponse IA
 
 # Création des tables
 Base.metadata.create_all(bind=engine)
@@ -69,13 +70,29 @@ class ChatRequest(BaseModel):
     message: str
 
 @app.post("/journey/chat")
-async def chat_with_mistral(request: ChatRequest):
+async def chat_with_mistral(request: ChatRequest, db: Session = Depends(get_db)):
     try:
         chat_response = client.chat.complete(
             model=model,
             messages=[{"role": "user", "content": request.message}]
         )
-        return {"response": chat_response.choices[0].message.content}
+
+        ai_response = chat_response.choices[0].message.content
+
+        # Enregistrement dans la base de données
+        
+        new_journey = Journey(
+            id=str(uuid.uuid4()),  # Génération d'un UUID unique
+            name="samsam",
+            description="sam",
+            ai_response=ai_response
+        )
+        db.add(new_journey)
+        db.commit()
+        db.refresh(new_journey)
+        
+
+        return {"response": ai_response}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
