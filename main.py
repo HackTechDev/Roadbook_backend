@@ -70,21 +70,23 @@ class ChatRequest(BaseModel):
     message: str
 
 @app.post("/journey/chat")
-async def chat_with_mistral(request: ChatRequest, db: Session = Depends(get_db)):
+async def chat_with_mistral(journey: JourneyCreate, db: Session = Depends(get_db)):
     try:
         chat_response = client.chat.complete(
             model=model,
-            messages=[{"role": "user", "content": request.message}]
+            messages=[{"role": "user", "content": journey.description}]
         )
 
         ai_response = chat_response.choices[0].message.content
 
         # Enregistrement dans la base de données
         
+
+
         new_journey = Journey(
             id=str(uuid.uuid4()),  # Génération d'un UUID unique
-            name="samsam",
-            description="sam",
+            name=journey.name,
+            description=journey.description,
             ai_response=ai_response
         )
         db.add(new_journey)
