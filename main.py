@@ -6,9 +6,9 @@ from sqlalchemy.orm import sessionmaker, Session
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 from mistralai import Mistral
+from typing import Optional
 import os
 import uuid
-
 
 load_dotenv()  # Charge les variables depuis .env
 
@@ -19,7 +19,6 @@ if not api_key:
 
 client = Mistral(api_key=api_key)
 model = "mistral-large-latest"
-
 
 # Configuration de la base de données
 DATABASE_URL = "sqlite:///./roadbook.db"
@@ -33,7 +32,7 @@ class Journey(Base):
     id = Column(String, primary_key=True, index=True, default=lambda: str(uuid.uuid4()))
     name = Column(String, index=True)
     description = Column(Text)
-    ai_response = Column(Text)  # Nouveau champ pour stocker la réponse IA
+    ai_response = Column(Text) 
 
 # Création des tables
 Base.metadata.create_all(bind=engine)
@@ -42,14 +41,13 @@ Base.metadata.create_all(bind=engine)
 class JourneyCreate(BaseModel):
     name: str
     description: str
-    ai_response: str
+    ai_response: Optional[str] = None
 
 class JourneyResponse(JourneyCreate):
     id: str
     name: str
     description: str
-    ai_response: str | None = None
-
+    ai_response: Optional[str] = None 
 
 # Dépendance pour obtenir une session de base de données
 def get_db():
